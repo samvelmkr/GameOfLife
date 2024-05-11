@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <cassert>
 #include <SDL2/SDL.h>
 
 #define SCREEN_WIDTH 800
@@ -13,9 +13,35 @@
 
 #define AGENTS_COUNT 5
 
+#define BACKGROUND_COLOR "181818"
+#define GRID_COLOR "303030"
+
+Uint8 hex_to_dec(char x) {
+  if ('0' <= x && x <= '9') return x - '0';
+  if ('a' <= x && x <= 'f') return x - 'a' + 10; 
+  if ('A' <= x && x <= 'F') return x - 'A' + 10;
+  std::cerr << "ERROR: incorrect hex character" << std::endl;
+  exit(1);
+}
+
+
+Uint8 parse_hex_byte(const char* byte) {
+  return hex_to_dec(*byte) * 0x10 + hex_to_dec(*(byte + 1));
+}
+
+void sdl_set_color_hex(SDL_Renderer* renderer, const char* hex) {
+  size_t hex_len = strlen(hex);
+  assert(hex_len == 6);
+
+  SDL_SetRenderDrawColor(renderer, 
+                         parse_hex_byte(hex),
+			 parse_hex_byte(hex + 2),
+			 parse_hex_byte(hex + 4),
+			 255);
+}
 
 void draw_grid(SDL_Renderer* renderer) {
-  SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+  sdl_set_color_hex(renderer, GRID_COLOR);
 
   for (int col = 1; col < BOARD_WIDTH; ++col) {
     SDL_RenderDrawLine(renderer,
@@ -80,6 +106,18 @@ void init_agents() {
   }
 }
 
+void draw_single_agent(SDL_Renderer* renderer, Agent agent) {
+  assert(0 && "TODO: draw_agent() is not implemented");
+  //SDL_SetRenderDrawColor(renderer, )
+}
+
+void draw_all_agents(SDL_Renderer* renderer) {
+  for (int i = 0; i < AGENTS_COUNT; ++i) {
+    draw_single_agent(renderer, agents[i]);
+  }
+
+}
+
 int main(int argc, char* argv[]) {
   init_agents();
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -117,7 +155,7 @@ int main(int argc, char* argv[]) {
         } break;
     }
 
-    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+    sdl_set_color_hex(renderer, BACKGROUND_COLOR);
 
     SDL_RenderClear(renderer);
 
@@ -131,3 +169,4 @@ int main(int argc, char* argv[]) {
   SDL_Quit();
   return 0;
 }
+
