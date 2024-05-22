@@ -2,6 +2,8 @@
 #include <cassert>
 #include <SDL2/SDL.h>
 
+#include "./style.h"
+
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 800
 
@@ -12,9 +14,6 @@
 #define CELL_HEIGHT ((float)SCREEN_HEIGHT / BOARD_HEIGHT)
 
 #define AGENTS_COUNT 5
-
-#define BACKGROUND_COLOR "181818"
-#define GRID_COLOR "303030"
 
 Uint8 hex_to_dec(char x) {
   if ('0' <= x && x <= '9') return x - '0';
@@ -107,8 +106,31 @@ void init_agents() {
 }
 
 void draw_single_agent(SDL_Renderer* renderer, Agent agent) {
-  assert(0 && "TODO: draw_agent() is not implemented");
-  //SDL_SetRenderDrawColor(renderer, )
+  sdl_set_color_hex(renderer, AGENT_COLOR);
+
+#define AGENTS_PADDING 20
+
+  SDL_Rect rect = {
+    (int) floorf(agent.pos_x * CELL_WIDTH + AGENTS_PADDING),
+    (int) floorf(agent.pos_y * CELL_HEIGHT + AGENTS_PADDING),
+    (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING),
+    (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING),
+  };
+
+  SDL_RenderFillRect(renderer, &rect);
+
+  int agents_width = (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING);
+  int agents_height = (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING);
+
+
+  SDL_Rect dir_rect = {
+    (int) floorf((agent.pos_x + 1) * CELL_WIDTH - AGENTS_PADDING),
+    (int) floorf(agent.pos_y * CELL_HEIGHT + AGENTS_PADDING + agents_height/3),
+    (int) floorf(agents_height/3),
+    (int) floorf(agents_height/3),
+  };
+
+  SDL_RenderFillRect(renderer, &dir_rect);
 }
 
 void draw_all_agents(SDL_Renderer* renderer) {
@@ -160,7 +182,8 @@ int main(int argc, char* argv[]) {
     SDL_RenderClear(renderer);
 
     draw_grid(renderer);
-
+    draw_all_agents(renderer);
+ 
     SDL_RenderPresent(renderer);
 
     }
