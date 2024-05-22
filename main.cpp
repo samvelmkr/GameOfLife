@@ -13,7 +13,8 @@
 #define CELL_WIDTH ((float)SCREEN_WIDTH / BOARD_WIDTH)
 #define CELL_HEIGHT ((float)SCREEN_HEIGHT / BOARD_HEIGHT)
 
-#define AGENTS_COUNT 5
+#define AGENTS_COUNT 4
+
 
 Uint8 hex_to_dec(char x) {
   if ('0' <= x && x <= '9') return x - '0';
@@ -62,6 +63,18 @@ typedef enum {
   DIR_LEFT,
   DIR_UP,
 } Direction;
+
+// FIXME: fix this bowl of shit
+float agent_directions[4][2] = {
+  // DIR_RIGHT
+  {0.7, 0.43}, // {1.0, 0.5},
+  // DIR_DOWN
+  {0.43, 0.7}, // {0.5, 1.0},
+  // DIR_LEFT
+  {0.1, 0.43}, // {0.0, 0.5},
+  // DIR_UP
+  {0.43, 0.1}  // {0.5, 0.0}
+};
 
 typedef struct {
   int pos_x, pos_y;
@@ -122,11 +135,13 @@ void draw_single_agent(SDL_Renderer* renderer, Agent agent) {
   int agents_width = (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING);
   int agents_height = (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING);
 
+  float dir_x = agent_directions[agent.dir][0] * CELL_WIDTH + agent.pos_x * CELL_WIDTH;
+  float dir_y = agent_directions[agent.dir][1] * CELL_HEIGHT + agent.pos_y * CELL_HEIGHT;
 
   SDL_Rect dir_rect = {
-    (int) floorf((agent.pos_x + 1) * CELL_WIDTH - AGENTS_PADDING),
-    (int) floorf(agent.pos_y * CELL_HEIGHT + AGENTS_PADDING + agents_height/3),
-    (int) floorf(agents_height/3),
+    (int) floorf(dir_x),
+    (int) floorf(dir_y),
+    (int) floorf(agents_width/3),
     (int) floorf(agents_height/3),
   };
 
@@ -135,6 +150,7 @@ void draw_single_agent(SDL_Renderer* renderer, Agent agent) {
 
 void draw_all_agents(SDL_Renderer* renderer) {
   for (int i = 0; i < AGENTS_COUNT; ++i) {
+    agents[i].dir = (Direction)i;
     draw_single_agent(renderer, agents[i]);
   }
 
