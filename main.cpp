@@ -366,6 +366,7 @@ void step_agent(Agent *agent) {
   Coord d = coord_dirs[agent->dir];
   agent->pos.x = mod_int(agent->pos.x + d.x, BOARD_WIDTH);
   agent->pos.y = mod_int(agent->pos.y + d.y, BOARD_HEIGHT);
+  // TODO: change env 
 }
 
 Food *food_infront_of_agent(Game *game, size_t agent_index) {
@@ -426,9 +427,7 @@ void execute_action(Game *game, size_t agent_index, Action action) {
       break;
 
     case ACTION_STEP:
-      if (env_of_agent(game, agent_index) != SEE_WALL) {
         step_agent(&game->agents[agent_index]);
-      }
       break;
 
     case ACTION_EAT: {
@@ -465,7 +464,9 @@ void step_game(Game *game) {
   for (size_t i = 0; i < AGENTS_COUNT; ++i) {
 
       // TODO: choose action to execute
-      execute_action(game, i, (Action) mod_int(i, ACTION_LEN));
+      env_of_agent(game, i);
+      Action act = get_action(game->agents[i]);
+      execute_action(game, i, act);
   }
 }
 
