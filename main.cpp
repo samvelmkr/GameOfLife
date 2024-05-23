@@ -19,6 +19,12 @@
 #define FOOD_COUNT 4
 #define WALLS_COUNT 4
 
+
+#define FOOD_HEALTH_RECOVERY 10
+#define STEP_HEALTH_DAMAGE 2
+#define HEALTH_MAX 100
+#define ATTACK_DAMAGE 10
+
 Uint8 hex_to_dec(char x) {
   if ('0' <= x && x <= '9')
     return x - '0';
@@ -130,7 +136,7 @@ typedef struct {
 typedef struct {
   Coord pos;
   Direction dir;
-  int hunger;
+  // int hunger;
   int hp;
   Brain brain;
   Env env; // Save here?
@@ -251,8 +257,7 @@ Agent random_agent(const Game* game) {
   Agent agent = {0};
   agent.pos = random_empty_coord_on_board(game);
   agent.dir = random_dir();
-  agent.hunger = 100;
-  agent.hp = 100;
+  agent.hp = HEALTH_MAX;
   agent.brain = init_brain();
   return agent;
 }
@@ -332,8 +337,136 @@ void init_game(Game *game) {
   }
 }
 
+
+int mod_int(int a, int b) {
+  return (a % b + b) % b;
+}
+
+Coord coord_dirs[4] = {
+  // DIR_RIGHT
+  {1, 0},
+  // DIR_DOWN
+  {0, 1},
+  // DIR_LEFT
+  {-1, 0},
+  // DIR_UP
+  {0, -1}
+};
+
+Coord coord_infront_of_agent(const Agent *agent) {
+  Coord d = coord_dirs[agent->dir];
+  Coord result = agent->pos;
+  result.x = mod_int(result.x + d.x, BOARD_WIDTH);
+  result.y = mod_int(result.y + d.y, BOARD_HEIGHT);
+  return result;
+}
+
+
+void step_agent(Agent *agent) {
+  Coord d = coord_dirs[agent->dir];
+  agent->pos.x = mod_int(agent->pos.x + d.x, BOARD_WIDTH);
+  agent->pos.y = mod_int(agent->pos.y + d.y, BOARD_HEIGHT);
+}
+
+Food *food_infront_of_agent(Game *game, size_t agent_index) {
+  Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
+
+  for (size_t i = 0; i < FOOD_COUNT; ++i) {
+    if (coord_equals(infront, game->food[i].pos)) {
+      return &game->food[i];
+    }
+  }
+
+  return NULL;
+}
+
+Agent *agent_infront_of_agent(Game *game, size_t agent_index) {
+  Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
+
+  for (size_t i = 0; i < AGENTS_COUNT; ++i) {
+    if (i != agent_index && coord_equals(infront, game->agents[i].pos)) {
+      return &game->agents[i];
+    }
+  }
+
+  return NULL;
+}
+
+Wall *wall_infront_of_agent(Game *game, size_t agent_index) {
+  Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
+
+  for (size_t i = 0; i < WALLS_COUNT; ++i) {
+    if (coord_equals(infront, game->walls[i].pos)) {
+      return &game->walls[i];
+    }
+  }
+
+  return NULL;
+}
+
+Env env_of_agent(Game *game, size_t agent_index) {
+  if (food_infront_of_agent(game, agent_index) != NULL) {
+    return SEE_FOOD;
+  }
+
+  if (wall_infront_of_agent(game, agent_index) != NULL) {
+    return SEE_WALL;
+  }
+
+  if (agent_infront_of_agent(game, agent_index) != NULL) {
+    return SEE_AGENT;
+  }
+
+  return SEE_NOTHING;
+}
+
+void execute_action(Game *game, size_t agent_index, Action action) {
+  switch (action) {
+    case ACTION_SLEEP:
+      break;
+
+    case ACTION_STEP:
+      if (env_of_agent(game, agent_index) != SEE_WALL) {
+        step_agent(&game->agents[agent_index]);
+      }
+      break;
+
+    case ACTION_EAT: {
+      Food *food = food_infront_of_agent(game, agent_index);
+      if (food != NULL) {
+        food->eaten = true;
+        game->agents[agent_index].hp += FOOD_HEALTH_RECOVERY;
+        if (game->agents[agent_index].hp > HEALTH_MAX) {
+          game->agents[agent_index].hp = HEALTH_MAX;
+        }
+      }
+    } break;
+
+    case ACTION_ATTACK: {
+      // TODO: make agents drop the food when they die
+      Agent *other_agent = agent_infront_of_agent(game, agent_index);
+      if (other_agent != NULL) {
+        other_agent->hp -= ATTACK_DAMAGE;
+      }
+    } break;
+
+    case ACTION_TURN_LEFT:
+        game->agents[agent_index].dir = (Direction) mod_int(game->agents[agent_index].dir + 1, 4);
+        break;
+
+    case ACTION_TURN_RIGHT:
+        game->agents[agent_index].dir = (Direction) mod_int(game->agents[agent_index].dir - 1, 4);
+        break;
+    }
+}
+
 void step_game(Game *game) {
 //TODO steping game is not implemented
+  for (size_t i = 0; i < AGENTS_COUNT; ++i) {
+
+      // TODO: choose action to execute
+      execute_action(game, i, (Action) mod_int(i, ACTION_LEN));
+  }
 }
 
 Game game = {0};
@@ -382,13 +515,17 @@ int main(int argc, char *argv[]) {
 
       case SDL_KEYDOWN: {
         switch (event.key.keysym.sym) {
+        
         case SDLK_SPACE: {
           step_game(&game);
+        } break;
+
+        case SDLK_r: {
+            init_game(&game);
+        } break;
+
         }
-          break;
-        }
-      }
-        break;
+      } break;
       }
 
       sdl_set_color_hex(renderer, BACKGROUND_COLOR);
