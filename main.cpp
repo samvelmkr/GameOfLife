@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <SDL2/SDL.h>
+#include <unordered_map>
 
 #include "./style.h"
 
@@ -97,8 +98,10 @@ typedef enum {
 
 } Action;
 
+// float is weights
+typedef  std::unordered_map<Env, std::unordered_map<Action, float>> BrainCells;
 typedef struct {
-  std::map<Env, std::map<Action, Weight>> BrainCells;
+  BrainCells cells;
   
 } Brain;
 
