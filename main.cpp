@@ -279,7 +279,6 @@ Agent mutate(Agent* agent) {
   }
   new_agent.pos = random_coord_on_board();
   new_agent.dir = random_dir();
-  new_agent.hunger = 100;
   new_agent.hp = 100;
   new_agent.brain = new_brain;
   return new_agent;
@@ -503,7 +502,7 @@ void step_game(Game *game) {
 
       // TODO: choose action to execute
       env_of_agent(game, i);
-      Action act = get_action(game->agents[i]);
+      Action act = get_action(&game->agents[i]);
       execute_action(game, i, act);
   }
 }
