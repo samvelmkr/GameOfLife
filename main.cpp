@@ -86,7 +86,8 @@ typedef enum {
   SEE_NOTHING = 0,
   SEE_AGENT,
   SEE_FOOD,
-  SEE_WALL
+  SEE_WALL,
+  ENV_LEN // envs length, always last
 } Env;
 
 typedef enum {
@@ -94,15 +95,16 @@ typedef enum {
   ACTION_STEP,
   ACTION_EAT,
   ACTION_ATTACK,
-  ACTION_ROTATE
-
+  ACTION_ROTATE,
+  ACTION_LEN // actions length, always last
 } Action;
 
-// float is weights
-typedef  std::unordered_map<Env, std::unordered_map<Action, float>> BrainCells;
+typedef float Weight;
+typedef std::unordered_map<Action, Weight> WeightedAction;
+typedef std::unordered_map<Env, WeightedAction> BrainCells;
+
 typedef struct {
   BrainCells cells;
-  
 } Brain;
 
 // state enviroment action next_state
@@ -119,6 +121,8 @@ typedef struct {
   Direction dir;
   int hunger;
   int hp;
+  Brain brain;
+  Env env; // Save here?
   State state;
 } Agent;
 
@@ -141,12 +145,55 @@ typedef struct {
 
 Agent agents[AGENTS_COUNT];
 
+Action _get_action_weighted(const WeightedAction& actions) {
+  Weight total_weight = 0;
+
+  for (const auto &action : actions) {
+    total_weight += action.second;
+  }
+  Weight random = (float)rand()/((float)RAND_MAX/total_weight);
+  for (const auto& action : actions) {
+    total_weight -= action.second;
+    if (random >= total_weight) {
+      return action.first;
+    }
+  }
+  return ACTION_SLEEP;
+}
+
+Action get_action(Agent agent) {
+    return _get_action_weighted(agent.brain.cells[agent.env]);
+}
+
 int random_int_range(int from, int to) {
   return rand() % (to - from) + from;
 }
 
 Direction random_dir() {
   return (Direction) random_int_range(0, 4);
+}
+
+#define INIT_WEIGHT 1
+
+Brain init_brain() {
+  Brain brain;
+
+  brain.cells[SEE_NOTHING][ACTION_STEP]   = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_SLEEP]  = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_ROTATE] = INIT_WEIGHT;
+
+  brain.cells[SEE_AGENT][ACTION_SLEEP]  = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_ATTACK] = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_ROTATE] = INIT_WEIGHT;
+
+  brain.cells[SEE_FOOD][ACTION_EAT]    = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_SLEEP]  = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_ROTATE] = INIT_WEIGHT;
+
+  brain.cells[SEE_WALL][ACTION_SLEEP] = INIT_WEIGHT;
+  brain.cells[SEE_WALL][ACTION_ROTATE] = INIT_WEIGHT;
+
+  return brain;
 }
 
 Agent random_agent() {
@@ -156,6 +203,7 @@ Agent random_agent() {
   agent.dir = random_dir();
   agent.hunger = 100;
   agent.hp = 100;
+  agent.brain = init_brain();
   return agent;
 }
 
