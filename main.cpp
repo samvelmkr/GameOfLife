@@ -212,8 +212,16 @@ bool is_cell_empty(const Game* game, Coord pos) {
   return true;
 }
 
-#define INIT_WEIGHT 1
+Coord random_empty_coord_on_board(const Game* game)
+{
+    Coord result = random_coord_on_board();
+    while (!is_cell_empty(game, result)) {
+        result = random_coord_on_board();
+    }
+    return result;
+}
 
+#define INIT_WEIGHT 1
 Brain init_brain() {
   Brain brain;
 
@@ -224,28 +232,19 @@ Brain init_brain() {
 
   brain.cells[SEE_AGENT][ACTION_SLEEP]        = INIT_WEIGHT;
   brain.cells[SEE_AGENT][ACTION_ATTACK]       = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
   brain.cells[SEE_FOOD][ACTION_EAT]           = INIT_WEIGHT;
   brain.cells[SEE_FOOD][ACTION_SLEEP]         = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_TURN_LEFT]     = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_TURN_RIGHT]    = INIT_WEIGHT;
 
-  brain.cells[SEE_WALL][ACTION_SLEEP]         = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
+  brain.cells[SEE_WALL][ACTION_SLEEP]      = INIT_WEIGHT;
+  brain.cells[SEE_WALL][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_WALL][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
   return brain;
-}
-
-Coord random_empty_coord_on_board(const Game* game)
-{
-    Coord result = random_coord_on_board();
-    while (!is_cell_empty(game, result)) {
-        result = random_coord_on_board();
-    }
-    return result;
 }
 
 Agent random_agent(const Game* game) {
