@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <unordered_map>
 #include <ctime>
+#include <algorithm>
 
 #include "./style.h"
 
@@ -139,8 +140,8 @@ typedef struct {
   // int hunger;
   int hp;
   Brain brain;
-  Env env; // Save here?
-  State state;
+  Env env;
+  bool isAttacked;
 } Agent;
 
 typedef struct {
@@ -160,24 +161,8 @@ typedef struct {
 
 Agent agents[AGENTS_COUNT];
 
-Action _get_action_weighted(const WeightedAction& actions) {
-  Weight total_weight = 0;
-
-  for (const auto &action : actions) {
-    total_weight += action.second;
-  }
-  Weight random = (float)rand()/((float)RAND_MAX/total_weight);
-  for (const auto& action : actions) {
-    total_weight -= action.second;
-    if (random >= total_weight) {
-      return action.first;
-    }
-  }
-  return ACTION_SLEEP;
-}
-
-Action get_action(Agent agent) {
-    return _get_action_weighted(agent.brain.cells[agent.env]);
+float random_float_range(float from, float to) {
+  return from + (float)rand()/((float)RAND_MAX/(to - from));
 }
 
 int random_int_range(int from, int to) {
@@ -227,10 +212,32 @@ Coord random_empty_coord_on_board(const Game* game)
     return result;
 }
 
-#define INIT_WEIGHT 1
+
+Action _get_action_weighted(const WeightedAction& actions) {
+  Weight total_weight = 0;
+
+  for (const auto &action : actions) {
+    total_weight += action.second;
+  }
+  Weight random = random_float_range(0, total_weight);
+  for (const auto& action : actions) {
+    total_weight -= action.second;
+    if (random >= total_weight) {
+      return action.first;
+    }
+  }
+  return ACTION_SLEEP;
+}
+
+Action get_action(Agent* agent) {
+    return _get_action_weighted(agent->brain.cells[agent->env]);
+}
+
+#define MIN_WEIGHT 0.0f
+#define MAX_WEIGHT 100.0f
 Brain init_brain() {
   Brain brain;
-
+  #define INIT_WEIGHT 1
   brain.cells[SEE_NOTHING][ACTION_STEP]       = INIT_WEIGHT;
   brain.cells[SEE_NOTHING][ACTION_SLEEP]      = INIT_WEIGHT;
   brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
@@ -251,6 +258,37 @@ Brain init_brain() {
   brain.cells[SEE_WALL][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
   return brain;
+}
+
+float clamp(float t, float min, float max) {
+  return std::max(min, std::min(t, max));
+}
+
+Agent mutate(Agent* agent) {
+  Agent new_agent;
+  Brain new_brain;
+  for (size_t env = 0; env < ENV_LEN; ++env) {
+    for (size_t i = 0; i < ACTION_LEN; ++i) {
+      if (agent->brain.cells[(Env)env].find((Action)i) != agent->brain.cells[(Env)env].end()) {
+        Weight mutation_factor = rand() & 1 ? 1.0f : -1.0f;
+        new_brain.cells[(Env)env][(Action)i] =
+        clamp(agent->brain.cells[(Env)env][(Action)i] + mutation_factor * random_float_range(0.0f, 5.0f),
+              MIN_WEIGHT, MAX_WEIGHT);
+      }
+    }
+  }
+  new_agent.pos = random_coord_on_board();
+  new_agent.dir = random_dir();
+  new_agent.hunger = 100;
+  new_agent.hp = 100;
+  new_agent.brain = new_brain;
+  return new_agent;
+}
+
+void create_new_agents(Game* game, Agent *survived_agents, size_t survived_agents_len) {
+  for (int i = 0; i < AGENTS_COUNT; ++i) {
+    game->agents[i] = mutate(&survived_agents[i % survived_agents_len]);
+  }
 }
 
 Agent random_agent(const Game* game) {
@@ -298,7 +336,7 @@ void draw_game(SDL_Renderer *renderer, const Game *game) {
   }
 
   for (int i = 0; i < FOOD_COUNT; ++i) {
-    int padding = 30;
+    int padding = CELL_WIDTH * 0.33f;
     SDL_Rect rect = {
         (int) floorf((game->food[i].pos.x ) * CELL_WIDTH + padding),
         (int) floorf((game->food[i].pos.y ) * CELL_HEIGHT + padding),
