@@ -217,20 +217,24 @@ bool is_cell_empty(const Game* game, Coord pos) {
 Brain init_brain() {
   Brain brain;
 
-  brain.cells[SEE_NOTHING][ACTION_STEP]   = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_SLEEP]  = INIT_WEIGHT;
-  brain.cells[SEE_NOTHING][ACTION_ROTATE] = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_STEP]       = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_SLEEP]      = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
-  brain.cells[SEE_AGENT][ACTION_SLEEP]  = INIT_WEIGHT;
-  brain.cells[SEE_AGENT][ACTION_ATTACK] = INIT_WEIGHT;
-  brain.cells[SEE_AGENT][ACTION_ROTATE] = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_SLEEP]        = INIT_WEIGHT;
+  brain.cells[SEE_AGENT][ACTION_ATTACK]       = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
-  brain.cells[SEE_FOOD][ACTION_EAT]    = INIT_WEIGHT;
-  brain.cells[SEE_FOOD][ACTION_SLEEP]  = INIT_WEIGHT;
-  brain.cells[SEE_FOOD][ACTION_ROTATE] = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_EAT]           = INIT_WEIGHT;
+  brain.cells[SEE_FOOD][ACTION_SLEEP]         = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
-  brain.cells[SEE_WALL][ACTION_SLEEP] = INIT_WEIGHT;
-  brain.cells[SEE_WALL][ACTION_ROTATE] = INIT_WEIGHT;
+  brain.cells[SEE_WALL][ACTION_SLEEP]         = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_LEFT]  = INIT_WEIGHT;
+  brain.cells[SEE_NOTHING][ACTION_TURN_RIGHT] = INIT_WEIGHT;
 
   return brain;
 }
