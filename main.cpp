@@ -2,6 +2,7 @@
 #include <cassert>
 #include <SDL2/SDL.h>
 #include <unordered_map>
+#include <ctime>
 
 #include "./style.h"
 
@@ -80,6 +81,14 @@ float agent_directions[4][2] = {
     {0.43, 0.1}  // {0.5, 0.0}
 };
 
+typedef struct {
+  int x, y;
+} Coord;
+
+int coord_equals(Coord a, Coord b) {
+  return a.x == b.x && a.y == b.y;
+}
+
 typedef int State;
 
 typedef enum {
@@ -94,7 +103,8 @@ typedef enum {
   ACTION_STEP,
   ACTION_EAT,
   ACTION_ATTACK,
-  ACTION_ROTATE
+  ACTION_TURN_LEFT,
+  ACTION_TURN_RIGHT 
 
 } Action;
 
@@ -115,7 +125,7 @@ typedef struct {
 // state enviroment action next_state
 
 typedef struct {
-  int pos_x, pos_y;
+  Coord pos;
   Direction dir;
   int hunger;
   int hp;
@@ -124,13 +134,11 @@ typedef struct {
 
 typedef struct {
   bool eaten;
-  int pos_x;
-  int pos_y;
+  Coord pos;
 } Food;
 
 typedef struct {
-  int pos_x;
-  int pos_y;
+  Coord pos;
 } Wall;
 
 typedef struct {
@@ -149,10 +157,48 @@ Direction random_dir() {
   return (Direction) random_int_range(0, 4);
 }
 
-Agent random_agent() {
+
+Coord random_coord_on_board() {
+  Coord res;
+  res.x = random_int_range(0, BOARD_WIDTH);
+  res.y = random_int_range(0, BOARD_HEIGHT);
+  return res;
+}
+
+bool is_cell_empty(const Game* game, Coord pos) {
+  for (int i =  0; i < AGENTS_COUNT; ++i) {
+    if (coord_equals(game->agents[i].pos, pos)) {
+      return false;
+    }
+  }
+
+  for (int i = 0; i < WALLS_COUNT; ++i) {
+    if (coord_equals(game->walls[i].pos, pos)) {
+      return false;
+    }
+  }
+
+  for (int i = 0; i < FOOD_COUNT; ++i) {
+    if (coord_equals(game->food[i].pos, pos)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+Coord random_empty_coord_on_board(const Game* game)
+{
+    Coord result = random_coord_on_board();
+    while (!is_cell_empty(game, result)) {
+        result = random_coord_on_board();
+    }
+    return result;
+}
+
+Agent random_agent(const Game* game) {
   Agent agent = {0};
-  agent.pos_x = random_int_range(0, BOARD_WIDTH);
-  agent.pos_y = random_int_range(0, BOARD_HEIGHT);
+  agent.pos = random_empty_coord_on_board(game);
   agent.dir = random_dir();
   agent.hunger = 100;
   agent.hp = 100;
@@ -165,8 +211,8 @@ void draw_single_agent(SDL_Renderer *renderer, Agent agent) {
 #define AGENTS_PADDING 20
 
   SDL_Rect rect = {
-      (int) floorf(agent.pos_x * CELL_WIDTH + AGENTS_PADDING),
-      (int) floorf(agent.pos_y * CELL_HEIGHT + AGENTS_PADDING),
+      (int) floorf(agent.pos.x * CELL_WIDTH + AGENTS_PADDING),
+      (int) floorf(agent.pos.y * CELL_HEIGHT + AGENTS_PADDING),
       (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING),
       (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING),
   };
@@ -176,8 +222,8 @@ void draw_single_agent(SDL_Renderer *renderer, Agent agent) {
   int agents_width = (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING);
   int agents_height = (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING);
 
-  float dir_x = agent_directions[agent.dir][0] * CELL_WIDTH + agent.pos_x * CELL_WIDTH;
-  float dir_y = agent_directions[agent.dir][1] * CELL_HEIGHT + agent.pos_y * CELL_HEIGHT;
+  float dir_x = agent_directions[agent.dir][0] * CELL_WIDTH + agent.pos.x * CELL_WIDTH;
+  float dir_y = agent_directions[agent.dir][1] * CELL_HEIGHT + agent.pos.y * CELL_HEIGHT;
 
   SDL_Rect dir_rect = {
       (int) floorf(dir_x),
@@ -197,8 +243,8 @@ void draw_game(SDL_Renderer *renderer, const Game *game) {
   for (int i = 0; i < FOOD_COUNT; ++i) {
     int padding = 30;
     SDL_Rect rect = {
-        (int) floorf((game->food[i].pos_x ) * CELL_WIDTH + padding),
-        (int) floorf((game->food[i].pos_y ) * CELL_HEIGHT + padding),
+        (int) floorf((game->food[i].pos.x ) * CELL_WIDTH + padding),
+        (int) floorf((game->food[i].pos.y ) * CELL_HEIGHT + padding),
         (int) floorf(CELL_WIDTH - 2 * padding),
         (int) floorf(CELL_HEIGHT - 2 * padding),
     };
@@ -209,8 +255,8 @@ void draw_game(SDL_Renderer *renderer, const Game *game) {
 
   for (int i = 0; i < WALLS_COUNT; ++i) {
     SDL_Rect rect = {
-        (int) floorf(game->walls[i].pos_x * CELL_WIDTH),
-        (int) floorf(game->walls[i].pos_y * CELL_HEIGHT),
+        (int) floorf(game->walls[i].pos.x * CELL_WIDTH),
+        (int) floorf(game->walls[i].pos.y * CELL_HEIGHT),
         (int) floorf(CELL_WIDTH),
         (int) floorf(CELL_HEIGHT),
     };
@@ -222,17 +268,15 @@ void draw_game(SDL_Renderer *renderer, const Game *game) {
 
 void init_game(Game *game) {
   for (size_t c = 0; c < AGENTS_COUNT; ++c) {
-    game->agents[c] = random_agent();
+    game->agents[c] = random_agent(game);
   }
 
   for (size_t c = 0; c < FOOD_COUNT; ++c) {
-    game->food[c].pos_x = random_int_range(0, BOARD_WIDTH);
-    game->food[c].pos_y = random_int_range(0, BOARD_HEIGHT);
+    game->food[c].pos = random_empty_coord_on_board(game);
   }
 
   for (size_t c = 0; c < WALLS_COUNT; ++c) {
-    game->walls[c].pos_x = random_int_range(0, BOARD_WIDTH);
-    game->walls[c].pos_y = random_int_range(0, BOARD_HEIGHT);
+    game->walls[c].pos = random_empty_coord_on_board(game);
   }
 }
 
@@ -243,6 +287,11 @@ void step_game(Game *game) {
 Game game = {0};
 
 int main(int argc, char *argv[]) {
+  static_assert(AGENTS_COUNT + FOOD_COUNT + WALLS_COUNT <= BOARD_WIDTH * BOARD_HEIGHT,
+                "Too many entities. Can't fit all of them on the board");
+
+  srand(time(0));
+
   init_game(&game);
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     std::cerr << "SDL error: " << SDL_GetError() << std::endl;
